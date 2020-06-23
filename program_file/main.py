@@ -48,7 +48,7 @@ class PageReader:
                 content = i.p.span.contents
 
             if content:
-                result += ' \\n\\n '
+                result += '\n'
                 for c in range(len(content)):
                     # Проверяем, строка ли в контенте. Если нет придётся дообработать
                     if not isinstance(content[c], str):
@@ -92,28 +92,26 @@ class FileCreator:
             with open(str(file_path), 'w', encoding='utf-8') as f:
                 data = self.redact_content(content)
                 f.write(str(data))
-            print(f'\n Файл был успешно создан: {file_path} \n')
+            print(f'\nФайл был успешно создан:\n{file_path} \n')
         except (FileNotFoundError, FileExistsError) as err:
             print(f'Возникла ошибка при записи файла - {err}')
-
 
     def redact_content(self, content: str) -> str:
         result = ''
         string = ''
-        spl = content.split()
-        for i in range(len(spl)):
-            if spl[i] == '\\n\\n':
-                if i > 1:
-                    result += f'{string}\n\n'
-                    string = ''
-                else:
-                    continue
-            elif len(string) + len(spl[i]) <= 80:
-                string += f'{spl[i]} '
-            else:
-                result += f'{string}'
-                string = f'\n{spl[i]} '
-        result += string
+        indents = content.splitlines()
+
+        for i in indents:
+            if i:
+                words = i.split()
+                for word in words:
+                    if len(string) + len(word) <= 80:
+                        string += f'{word} '
+                    else:
+                        result += f'{string}'
+                        string = f'\n{word} '
+                result += f'{string}\n\n'
+                string = ''
         return result
 
 
@@ -130,8 +128,8 @@ if __name__ == '__main__':
         # url = r'https://lenta.ru/articles/2020/06/20/babariko/'
         # url = r'https://www.fontanka.ru/2020/06/22/69328792/'
         # url = r'https://www.severcart.ru/blog/all/python_getattr/'
-        url = r'https://zen.yandex.ru/media/habr/chut-ne-uvolili-po-state-na-habre-5e1ed647b477bf00adcddabc'
-        # url = r'https://www.gazeta.ru/social/2020/06/23/13127743.shtml'
+        # url = r'https://zen.yandex.ru/media/habr/chut-ne-uvolili-po-state-na-habre-5e1ed647b477bf00adcddabc'
+        url = r'https://www.gazeta.ru/social/2020/06/23/13127743.shtml'
     if url:
         res = PageReader(url)
         content, path = res.page_request()
