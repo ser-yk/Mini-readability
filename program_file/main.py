@@ -1,35 +1,35 @@
 from pathlib import Path
 from sys import argv
 from urllib.parse import urlparse
-import yaml
+import json
 
 from bs4 import BeautifulSoup
 import requests
 
 
 class PageReader:
-    def __init__(self, url):
+
+    def __init__(self, url, find_tags):
         self.url = url
         self.parse_url = urlparse(url)
+        self.tags = find_tags
 
     def page_request(self):
         try:
             response = requests.get(self.url)
             if response.status_code == 200:
-                # response.encoding = 'utf-8'
                 return self.edit_content(response.text), self.parse_url.path
             else:
-                self.return_error(f'Was received wrong answer. Status code: {response.status_code}')
+                print(f'Was received wrong answer. Status code: {response.status_code}')
                 return None, None
         except (requests.ConnectionError, requests.Timeout, requests.exceptions.MissingSchema) as err:
-            self.return_error(f'Some problem with connect - {err}')
+            print(f'Some problem with connect - {err}')
             return None, None
-
 
     def edit_content(self, response) -> str:
         try:
             soup = BeautifulSoup(response, 'lxml').article
-            result = soup.find_all(['h1', 'p', 'code', 'li', 'span'])
+            result = soup.find_all(self.tags)
             return self.format_text(result)
         except AttributeError:
             print('Не удалось прочитать информацию с сайта')
@@ -38,10 +38,9 @@ class PageReader:
         result = ''
         for i in data:
             tag_name = i.name
-            # Отфильтруем лишние ссылки т.к. это похоже а рекламу
+            # Отфильтруем лишние ссылки т.к. это похоже на рекламу
             if (tag_name == 'li' and i.a or i.link) or (tag_name == 'span' and i.a or i.link):
                 continue
-            print(i)
             # Извлекаем контент из тегов
             content = i.contents
             if not content and tag_name == 'p' and i.p.span:
@@ -56,7 +55,6 @@ class PageReader:
                         content[c] = new_string
                     result += content[c]
         return result
-
 
     def handel_tag(self, tag):
         """
@@ -78,12 +76,11 @@ class PageReader:
             return new_string
 
 
-    @staticmethod
-    def return_error(message: str):
-        print(message)
-
-
 class FileCreator:
+
+    def __init__(self, width):
+        self.width = width
+
     def save_file(self, content: str, path: str) -> None:
         try:
             out_path = Path.cwd() / path[1:]
@@ -105,7 +102,7 @@ class FileCreator:
             if i:
                 words = i.split()
                 for word in words:
-                    if len(string) + len(word) <= 80:
+                    if len(string) + len(word) <= self.width:
                         string += f'{word} '
                     else:
                         result += f'{string}'
@@ -115,24 +112,42 @@ class FileCreator:
         return result
 
 
-def read_yaml():
-    pass
+class MyConfig:
+    _default_config = {'tags': ['h1', 'p', 'code', 'li', 'code'],
+                       'width': 80}
+
+    def read_json_file(self):
+        try:
+            with open('my_config.json', 'r') as f:
+                conf = json.load(f)
+        except FileNotFoundError:
+            with open('my_config.json', 'w') as f:
+                f.write(json.dumps(self._default_config))
+                conf = self._default_config
+        finally:
+            return conf
+
+def get_url():
+    url = ''
+    while not url:
+        url = input('Вы не передали в качестве параметра url, пожалуста введи его в строку ниже: \nПример: '
+                    'https://lenta.ru/articles/2020/06/20/babariko/ \n')
+    return url
 
 
 if __name__ == '__main__':
+    conf = MyConfig().read_json_file()
     try:
         script, url = argv
     except ValueError:
-        # url = input('Вы не передали в качестве параметра url, пожалуста введи его в строку ниже: \nПример: '
-        #             'https://lenta.ru/articles/2020/06/20/babariko/ \n')
+        url = get_url()
         # url = r'https://lenta.ru/articles/2020/06/20/babariko/'
         # url = r'https://www.fontanka.ru/2020/06/22/69328792/'
         # url = r'https://www.severcart.ru/blog/all/python_getattr/'
         # url = r'https://zen.yandex.ru/media/habr/chut-ne-uvolili-po-state-na-habre-5e1ed647b477bf00adcddabc'
-        url = r'https://www.gazeta.ru/social/2020/06/23/13127743.shtml'
+        # url = r'https://www.gazeta.ru/social/2020/06/23/13127743.shtml'
     if url:
-        res = PageReader(url)
+        res = PageReader(url, conf['tags'])
         content, path = res.page_request()
         if content:
-            FileCreator().save_file(content, path)
-
+            FileCreator(conf['width']).save_file(content, path)
