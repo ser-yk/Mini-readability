@@ -161,3 +161,4 @@ if __name__ == '__main__':
         content, path = res.page_request()
         if content:
             FileCreator(conf['width']).save_file(content, path)
+    input('Press ENTER to exit')
