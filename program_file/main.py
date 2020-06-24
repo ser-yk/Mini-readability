@@ -48,8 +48,10 @@ class PageReader:
 
             if content:
                 result += '\n'
+                if tag_name in ('li',):
+                    result += ' \\t '
                 for c in range(len(content)):
-                    # Проверяем, строка ли в контенте. Если нет придётся дообработать
+                    # Проверяем, строка ли в контенте. Если нет придётся, то нужно обработать
                     if not isinstance(content[c], str):
                         new_string = self.handel_tag(content[c])
                         content[c] = new_string
@@ -102,11 +104,18 @@ class FileCreator:
             if i:
                 words = i.split()
                 for word in words:
+                    if word == "\\t":
+                        string += '\t'
+                        continue
                     if len(string) + len(word) <= self.width:
                         string += f'{word} '
                     else:
-                        result += f'{string}'
-                        string = f'\n{word} '
+                        if '\t' in string:
+                            result += f'{string}'
+                            string = f'\n\t{word} '
+                        else:
+                            result += f'{string}'
+                            string = f'\n{word} '
                 result += f'{string}\n\n'
                 string = ''
         return result
@@ -146,6 +155,7 @@ if __name__ == '__main__':
         # url = r'https://www.severcart.ru/blog/all/python_getattr/'
         # url = r'https://zen.yandex.ru/media/habr/chut-ne-uvolili-po-state-na-habre-5e1ed647b477bf00adcddabc'
         # url = r'https://www.gazeta.ru/social/2020/06/23/13127743.shtml'
+        # url = 'https://ya.ru'
     if url:
         res = PageReader(url, conf['tags'])
         content, path = res.page_request()
